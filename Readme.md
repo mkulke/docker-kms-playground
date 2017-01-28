@@ -1,6 +1,6 @@
-# AWS KMS Playground
+# Docker KMS Playground
 
-Encrypt secrets with a datakey and decrypt them in an env map.
+Encrypt secrets with a datakey and export the decrypted values to env.
 
 ## Create AES Datakey
 
@@ -20,7 +20,7 @@ export ENC_DATA_KEY="AbC...z="
 ## Encrypt Secret with Plaintext
 
 ```
-MY_SECRET_ENCRYPTED=$(echo "shhhh" | openssl aes-256-cbc -pass env:PLAINTEXT | base64)
+MY_SECRET_ENCRYPTED=$(echo "shhhh... secret" | openssl aes-256-cbc -pass env:PLAINTEXT | base64)
 ```
 
 ## Env File
@@ -35,9 +35,22 @@ EOF
 
 ## Decrypt
 
+### Env file
+
 ```
 cat my.env | ./decrypt.sh
 HELLO=WORLD
 FOO=BAR
-MY_SECRET=shhhh
+MY_SECRET=shhhh... secret
+```
+
+### Docker
+
+```
+docker build -t kms-test .
+docker run -it \
+  -v ~/.aws/credentials:/root/.aws/credentials \
+  -e ENC_DATA_KEY=$ENC_DATA_KEY \
+  -e MY_SECRET_ENCRYPTED=$MY_SECRET_ENCRYPTED \
+  kms-test
 ```
