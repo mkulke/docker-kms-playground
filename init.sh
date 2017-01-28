@@ -6,7 +6,7 @@ export PASSPHRASE=$(aws kms decrypt --ciphertext-blob fileb://<(printenv ENC_DAT
 
 while read KEY
 do
-  export ${KEY%_*}="$(printenv $KEY | base64 --decode | openssl aes-256-cbc -d -pass env:PASSPHRASE)"
-done < <(compgen -e | grep "_ENCRYPTED")
+  export ${KEY%_ENCRYPTED}="$(printenv $KEY | base64 --decode | openssl aes-256-cbc -d -pass env:PASSPHRASE)"
+done < <(compgen -e | grep "_ENCRYPTED$")
 
 exec watch -n5 printenv MY_SECRET
