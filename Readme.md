@@ -14,13 +14,26 @@ The call should return `Plaintext` and `CiphertextBlob` strings. Export both (th
 ```
 read -s PLAINTEXT
 export PLAINTEXT
-export ENC_DATA_KEY="AbC...z="
+export KMS_KEY="AbC...z="
 ```
 
-## Encrypt Secret with Plaintext
+## Retrieve IV, Convert Key to OpenSSL & Concat IV with Key.
 
 ```
-MY_SECRET_ENCRYPTED=$(echo "shhhh... secret" | openssl aes-256-cbc -pass env:PLAINTEXT | base64)
+OPENSSL_IV=$(aws kms generate-random --number-of-bytes 16 --query Plaintext --output text | base64 --decode | hexdump -v -e '/1 "%02x"')
+OPENSSL_KEY=$(printenv PLAINTEXT | base64 --decode | hexdump -v -e '/1 "%02x"')
+```
+
+For convenience the IV and KMS Key are concatenated (separated by a dot). This tuple can be stored alongside encrypted secrets.
+
+```
+ENC_DATA_KEY="${OPENSSL_IV}.${KMS_KEY}"
+```
+
+## Encrypt Secret with Plaintext Key
+
+```
+MY_SECRET_ENCRYPTED=$(echo "shhhh... secret" | openssl aes-256-cbc -iv $OPENSSL_IV -K $OPENSSL_KEY -base64)
 ```
 
 ## Env File

@@ -7,13 +7,16 @@ do
   export "${KEY_VALUE}"
 done < <(./envconsul -pristine -consul consul:8500 -once -prefix ${CONSUL_PREFIX} env)
 
-export PASSPHRASE=$(aws kms decrypt --ciphertext-blob fileb://<(printenv ENC_DATA_KEY | base64 --decode) --query Plaintext --output text)
+KMS_KEY=${ENC_DATA_KEY#*.}
+export PLAINTEXT=$(aws kms decrypt --ciphertext-blob fileb://<(echo $KMS_KEY | base64 --decode) --query Plaintext --output text)
+OPENSSL_KEY=$(printenv PLAINTEXT | base64 --decode | hexdump -v -e '/1 "%02x"')
+OPENSSL_IV=${ENC_DATA_KEY%.*}
 
 while read KEY
 do
-  export ${KEY%_ENCRYPTED}="$(printenv $KEY | base64 --decode | openssl aes-256-cbc -d -pass env:PASSPHRASE)"
+  export ${KEY%_ENCRYPTED}="$(printenv $KEY | openssl aes-256-cbc -d -iv $OPENSSL_IV -K $OPENSSL_KEY -base64)"
 done < <(compgen -e | grep "_ENCRYPTED$")
 
-unset PASSPHRASE
+unset PLAINTEXT OPENSSL_KEY OPENSSL_IV
 
 env
